@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cay's Money Tracker</title>
+  <meta name="description" content="Pencatat keuangan pribadi yang menyimpan data di perangkat dan bisa dipakai offline.">
+  <meta name="theme-color" content="#4f46e5" id="meta-theme">
+  <meta name="color-scheme" content="light dark">
+  <meta name="application-name" content="Cay's Money">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cay's Money">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    try {
+      var t = localStorage.getItem('cmt-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+</head>
+<body data-view="home">
+  <div class="statusbar-bg" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16.8" r="13" fill="#d97706"/>
+        <circle cx="16" cy="15.4" r="13" fill="#fcd34d"/>
+        <circle cx="16" cy="15.4" r="10.4" fill="none" stroke="#b45309" stroke-opacity=".35" stroke-width="1"/>
+        <path d="M19.95 11.02A5.9 5.9 0 1 0 19.95 19.78" fill="none" stroke="#3730a3" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h1>Cay's Money Tracker</h1>
+    </div>
+  </header>
+
+  <main class="content" id="main">
+    <!-- ============ BERANDA ============ -->
+    <section class="view" id="view-home" aria-label="Beranda">
+      <div class="hero">
+        <p class="hero-label">Saldo</p>
+        <p class="hero-amount" id="home-balance">0 ₽</p>
+        <p class="hero-sub">Total pemasukan dikurangi pengeluaran</p>
+      </div>
+
+      <div class="card stats-card">
+        <p class="card-kicker" id="home-month">Bulan ini</p>
+        <div class="stats">
+          <div class="stat income">
+            <p class="stat-label">
+              <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></svg></span>
+              Pemasukan
+            </p>
+            <p class="stat-value" id="home-income">0 ₽</p>
+          </div>
+          <div class="stat expense">
+            <p class="stat-label">
+              <span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg></span>
+              Pengeluaran
+            </p>
+            <p class="stat-value" id="home-expense">0 ₽</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Pengeluaran per kategori</h2>
+        </div>
+        <div id="home-chart"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Transaksi terakhir</h2>
+          <button type="button" class="link-btn" data-goto="history">Lihat semua</button>
+        </div>
+        <div id="home-recent"></div>
+      </div>
+    </section>
+
+    <!-- ============ RIWAYAT ============ -->
+    <section class="view" id="view-history" aria-label="Riwayat" hidden>
+      <h2 class="view-title">Riwayat</h2>
+      <div class="toolbar">
+        <div class="month-row">
+          <button type="button" class="icon-btn" id="month-prev" aria-label="Bulan sebelumnya">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <label class="sr-only" for="month-select">Pilih bulan</label>
+          <select id="month-select" class="select month-select"></select>
+          <button type="button" class="icon-btn" id="month-next" aria-label="Bulan berikutnya">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </div>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+          <input type="search" id="search-input" class="input" placeholder="Cari catatan atau kategori" aria-label="Cari transaksi" enterkeyhint="search" autocomplete="off">
+        </div>
+      </div>
+      <div class="summary-row" id="history-summary"></div>
+      <div id="history-list"></div>
+    </section>
+
+    <!-- ============ TABUNGAN IMPIAN ============ -->
+    <section class="view" id="view-wishlist" aria-label="Tabungan impian" hidden>
+      <h2 class="view-title">Tabungan Impian</h2>
+      <p class="view-sub">Masukkan harga impianmu dan berapa yang bisa kamu tabung tiap bulan. Aplikasi menghitung kira-kira kapan uangnya cukup.</p>
+      <div class="card wish-summary" id="wish-summary" hidden></div>
+      <button type="button" class="btn btn-primary btn-block mt" id="wish-add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Tambah impian
+      </button>
+      <ul class="wish-list" id="wish-list"></ul>
+    </section>
+
+    <!-- ============ PENGATURAN ============ -->
+    <section class="view" id="view-settings" aria-label="Pengaturan" hidden>
+      <h2 class="view-title">Pengaturan</h2>
+
+      <div class="group">
+        <h3 class="group-title">Tampilan</h3>
+        <div class="card">
+          <div class="setting-row">
+            <label for="set-currency">Mata uang</label>
+            <select id="set-currency" class="select"></select>
+          </div>
+          <p class="hint">Mengganti mata uang hanya mengubah simbol dan format. Nominal tidak dikonversi.</p>
+          <div class="setting-block">
+            <p class="setting-label" id="theme-label">Tema</p>
+            <fieldset class="segmented" aria-labelledby="theme-label">
+              <label><input type="radio" name="theme" value="system"><span>Sistem</span></label>
+              <label><input type="radio" name="theme" value="light"><span>Terang</span></label>
+              <label><input type="radio" name="theme" value="dark"><span>Gelap</span></label>
+            </fieldset>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3 class="group-title">Kategori</h3>
+        <div class="card list">
+          <ul class="cat-list" id="cat-list"></ul>
+        </div>
+        <button type="button" class="btn btn-secondary btn-block mt" id="cat-add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Tambah kategori
+        </button>
+      </div>
+
+      <div class="group">
+        <h3 class="group-title">Data &amp; Backup</h3>
+        <div class="card stack">
+          <p class="backup-status" id="backup-status"></p>
+          <button type="button" class="btn btn-primary btn-block" id="btn-export">Ekspor backup (JSON)</button>
+          <label class="btn btn-secondary btn-block" for="import-file">Impor backup (JSON)</label>
+          <input type="file" id="import-file" class="file-input" accept=".json,application/json">
+          <button type="button" class="btn btn-secondary btn-block" id="btn-csv">Ekspor CSV</button>
+          <p class="hint">Semua data hanya tersimpan di perangkat ini. Kalau aplikasi dihapus atau HP hilang, data ikut hilang. Ekspor backup secara rutin dan simpan filenya di tempat lain.</p>
+        </div>
+      </div>
+
+      <p class="about">Cay's Money Tracker · versi 1.1<br>Tanpa akun, tanpa server, tanpa pelacakan.</p>
+    </section>
+  </main>
+
+  <button type="button" class="fab" id="fab" aria-label="Tambah transaksi">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <nav class="tabbar" aria-label="Navigasi utama">
+    <div class="tabbar-inner">
+      <button type="button" class="tab" data-tab="home" aria-current="page">
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11a1 1 0 0 0 1 1H10v-6h4v6h3.5a1 1 0 0 0 1-1V9"/></svg></span>
+        <span>Beranda</span>
+      </button>
+      <button type="button" class="tab" data-tab="history">
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="2.8"/></svg></span>
+        <span>Riwayat</span>
+      </button>
+      <button type="button" class="tab" data-tab="wishlist">
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span>
+        <span>Tabungan</span>
+      </button>
+      <button type="button" class="tab" data-tab="settings">
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></span>
+        <span>Pengaturan</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ============ SHEET: TRANSAKSI ============ -->
+  <div class="sheet" id="sheet-tx" role="dialog" aria-modal="true" aria-labelledby="tx-title" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <form class="sheet-panel" id="tx-form" novalidate autocomplete="off">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="tx-title">Tambah Transaksi</h2>
+        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <fieldset class="segmented type-seg">
+          <legend class="sr-only">Jenis transaksi</legend>
+          <label class="expense"><input type="radio" name="tx-type" value="expense" checked><span>Pengeluaran</span></label>
+          <label class="income"><input type="radio" name="tx-type" value="income"><span>Pemasukan</span></label>
+        </fieldset>
+
+        <div>
+          <label class="amount-field" for="tx-amount">
+            <span class="amount-prefix cur-before" hidden>Rp</span>
+            <input id="tx-amount" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" enterkeyhint="done" autocomplete="off" aria-label="Nominal">
+            <span class="amount-prefix cur-after">₽</span>
+          </label>
+          <p class="field-error" id="tx-error" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="tx-cat-label">Kategori</span>
+          <div class="chips" id="tx-cats" role="radiogroup" aria-labelledby="tx-cat-label"></div>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Tanggal</span>
+          <input type="date" id="tx-date" class="input">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Catatan (opsional)</span>
+          <input type="text" id="tx-note" class="input" maxlength="120" placeholder="mis. makan siang" enterkeyhint="done">
+        </label>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-ghost-danger" id="tx-delete" hidden>Hapus</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ SHEET: KATEGORI ============ -->
+  <div class="sheet" id="sheet-cat" role="dialog" aria-modal="true" aria-labelledby="cat-title" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <form class="sheet-panel" id="cat-form" novalidate autocomplete="off">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="cat-title">Kategori Baru</h2>
+        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <label class="field">
+          <span class="field-label">Nama kategori</span>
+          <input type="text" id="cat-name" class="input" maxlength="24" placeholder="mis. Pendidikan" enterkeyhint="done">
+        </label>
+        <p class="field-error" id="cat-error" role="alert" hidden></p>
+
+        <div class="field">
+          <span class="field-label" id="cat-type-label">Dipakai untuk</span>
+          <fieldset class="segmented" id="cat-type" aria-labelledby="cat-type-label">
+            <label><input type="radio" name="cat-type" value="expense" checked><span>Pengeluaran</span></label>
+            <label><input type="radio" name="cat-type" value="income"><span>Pemasukan</span></label>
+            <label><input type="radio" name="cat-type" value="both"><span>Keduanya</span></label>
+          </fieldset>
+          <p class="hint" id="cat-fallback-note" hidden>Kategori cadangan: dipakai untuk transaksi yang kategorinya dihapus, jadi tidak bisa dihapus dan berlaku untuk keduanya.</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="cat-emoji-label">Ikon</span>
+          <div class="emoji-grid" id="cat-emojis" role="radiogroup" aria-labelledby="cat-emoji-label"></div>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="cat-color-label">Warna di grafik</span>
+          <div class="color-grid" id="cat-colors" role="radiogroup" aria-labelledby="cat-color-label"></div>
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-ghost-danger" id="cat-delete" hidden>Hapus</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ SHEET: IMPIAN ============ -->
+  <div class="sheet" id="sheet-wish" role="dialog" aria-modal="true" aria-labelledby="wish-title" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <form class="sheet-panel" id="wish-form" novalidate autocomplete="off">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="wish-title">Impian Baru</h2>
+        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <label class="field">
+          <span class="field-label">Nama impian</span>
+          <input type="text" id="wish-name" class="input" maxlength="40" placeholder="mis. Laptop baru, liburan ke Bali" enterkeyhint="next">
+        </label>
+
+        <div class="field">
+          <span class="field-label" id="wish-kind-label">Jenis</span>
+          <div class="chips" id="wish-kinds" role="radiogroup" aria-labelledby="wish-kind-label"></div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Harga / target dana</span>
+          <label class="amount-field sm" for="wish-price">
+            <span class="amount-prefix cur-before" hidden>Rp</span>
+            <input id="wish-price" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Harga atau target dana">
+            <span class="amount-prefix cur-after">₽</span>
+          </label>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Bisa ditabung per bulan</span>
+          <label class="amount-field sm" for="wish-monthly">
+            <span class="amount-prefix cur-before" hidden>Rp</span>
+            <input id="wish-monthly" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Tabungan per bulan">
+            <span class="amount-prefix cur-after">₽</span>
+          </label>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Sudah terkumpul (opsional)</span>
+          <label class="amount-field sm" for="wish-saved">
+            <span class="amount-prefix cur-before" hidden>Rp</span>
+            <input id="wish-saved" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Sudah terkumpul">
+            <span class="amount-prefix cur-after">₽</span>
+          </label>
+        </div>
+
+        <div class="estimate" id="wish-estimate" aria-live="polite"></div>
+        <p class="field-error" id="wish-error" role="alert" hidden></p>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-ghost-danger" id="wish-delete" hidden>Hapus</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ SHEET: SETOR TABUNGAN ============ -->
+  <div class="sheet" id="sheet-deposit" role="dialog" aria-modal="true" aria-labelledby="deposit-title" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <form class="sheet-panel" id="deposit-form" novalidate autocomplete="off">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="deposit-title">Setor</h2>
+        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <p class="hint" id="deposit-info"></p>
+        <div>
+          <label class="amount-field" for="deposit-amount">
+            <span class="amount-prefix cur-before" hidden>Rp</span>
+            <input id="deposit-amount" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" enterkeyhint="done" autocomplete="off" aria-label="Nominal setoran">
+            <span class="amount-prefix cur-after">₽</span>
+          </label>
+          <p class="field-error" id="deposit-error" role="alert" hidden></p>
+        </div>
+        <p class="hint">Setoran menambah jumlah yang sudah terkumpul. Untuk mengoreksi jumlahnya, ketuk impian lalu ubah "Sudah terkumpul".</p>
+      </div>
+      <div class="sheet-foot">
+        <button type="submit" class="btn btn-primary">Tambahkan</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ DIALOG KONFIRMASI ============ -->
+  <div class="sheet center" id="sheet-confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-msg" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <div class="sheet-panel dialog">
+      <h2 id="confirm-title">Yakin?</h2>
+      <p id="confirm-msg"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" data-close id="confirm-cancel">Batal</button>
+        <button type="button" class="btn btn-danger" id="confirm-ok">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <noscript><p class="noscript">Aplikasi ini membutuhkan JavaScript.</p></noscript>
+  <script src="app.js" defer></script>
+</body>
+</html>
