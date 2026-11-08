@@ -7,13 +7,19 @@ Semua data tersimpan di HP sendiri: tanpa akun, tanpa server, tanpa pelacakan.
 
 ## Fitur
 
+- **Saldo awal** ditanyakan saat aplikasi pertama dibuka (bisa dilewati, bisa diubah di Pengaturan)
 - Catat pemasukan dan pengeluaran (tombol **+**, ketik nominal, Simpan)
+- **Hari ini:** total pengeluaran hari ini dan daftar transaksinya di Beranda
+- **Anggaran bulanan** per kategori (mis. Internet 970 ₽, Makanan 1 500 ₽) dengan bar terpakai/sisa; otomatis mulai dari nol setiap tanggal 1
 - Riwayat per tanggal, filter per bulan, pencarian, edit dan hapus
 - Beranda: saldo, total bulan ini, grafik pengeluaran per kategori
 - Kategori bisa ditambah, diubah, dihapus
-- **Tabungan Impian:** isi harga barang/impian dan berapa yang bisa ditabung per bulan, aplikasi menghitung kira-kira berapa bulan lagi dan bulan apa uangnya cukup. Ada tombol **Setor** untuk mencatat tabungan yang masuk
+- **Tabungan Impian:** isi harga dan tabungan per bulan, aplikasi menghitung kira-kira berapa bulan lagi. Tombol **Transfer** memindahkan uang dari saldo ke tabungan impian
+- **Urungkan / ulangi** (↶ ↷ di kanan atas) untuk semua perubahan data, dan **Reset semua data** di Pengaturan
 - Mata uang default Rubel (format `1 250 000 ₽`), bisa diganti di Pengaturan
 - Mode terang/gelap, ekspor & impor backup (JSON), ekspor CSV
+
+Saldo = saldo awal + pemasukan − pengeluaran − transfer ke tabungan.
 
 ## Cara install di HP
 

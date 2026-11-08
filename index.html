@@ -37,6 +37,14 @@
         <path d="M19.95 11.02A5.9 5.9 0 1 0 19.95 19.78" fill="none" stroke="#3730a3" stroke-width="3" stroke-linecap="round"/>
       </svg>
       <h1>Cay's Money Tracker</h1>
+      <div class="history-btns">
+        <button type="button" class="head-btn" id="btn-undo" aria-label="Urungkan (undo)" title="Urungkan" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button type="button" class="head-btn" id="btn-redo" aria-label="Ulangi (redo)" title="Ulangi" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -46,7 +54,7 @@
       <div class="hero">
         <p class="hero-label">Saldo</p>
         <p class="hero-amount" id="home-balance">0 ₽</p>
-        <p class="hero-sub">Total pemasukan dikurangi pengeluaran</p>
+        <p class="hero-sub" id="home-balance-sub">Saldo awal + pemasukan − pengeluaran − transfer ke tabungan</p>
       </div>
 
       <div class="card stats-card">
@@ -67,6 +75,28 @@
             <p class="stat-value" id="home-expense">0 ₽</p>
           </div>
         </div>
+        <p class="stats-note" id="home-saved" hidden></p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Hari ini</h2>
+          <button type="button" class="link-btn" data-goto="history">Lihat riwayat</button>
+        </div>
+        <div class="today-total">
+          <span class="today-label" id="home-today-date">Pengeluaran hari ini</span>
+          <strong id="home-today-expense">0 ₽</strong>
+          <span class="today-extra" id="home-today-extra"></span>
+        </div>
+        <div id="home-today"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Anggaran bulan ini</h2>
+          <button type="button" class="link-btn" id="budget-edit">Atur</button>
+        </div>
+        <div id="home-budget"></div>
       </div>
 
       <div class="card">
@@ -74,14 +104,6 @@
           <h2 class="card-title">Pengeluaran per kategori</h2>
         </div>
         <div id="home-chart"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h2 class="card-title">Transaksi terakhir</h2>
-          <button type="button" class="link-btn" data-goto="history">Lihat semua</button>
-        </div>
-        <div id="home-recent"></div>
       </div>
     </section>
 
@@ -125,6 +147,24 @@
       <h2 class="view-title">Pengaturan</h2>
 
       <div class="group">
+        <h3 class="group-title">Saldo &amp; anggaran</h3>
+        <div class="card list">
+          <ul class="cat-list">
+            <li><button type="button" class="row-btn" id="opening-edit">
+              <span class="tx-icon" style="--c:#4f46e5" aria-hidden="true">💰</span>
+              <span class="row-main"><span>Saldo awal</span><small id="opening-value">0 ₽</small></span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button></li>
+            <li><button type="button" class="row-btn" id="budget-edit-2">
+              <span class="tx-icon" style="--c:#0ea5e9" aria-hidden="true">📊</span>
+              <span class="row-main"><span>Anggaran bulanan</span><small id="budget-count">Belum diatur</small></span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="group">
         <h3 class="group-title">Tampilan</h3>
         <div class="card">
           <div class="setting-row">
@@ -166,7 +206,15 @@
         </div>
       </div>
 
-      <p class="about">Cay's Money Tracker · versi 1.1<br>Tanpa akun, tanpa server, tanpa pelacakan.</p>
+      <div class="group">
+        <h3 class="group-title">Mulai dari awal</h3>
+        <div class="card stack">
+          <p class="hint">Salah input? Pakai tombol ↶ (urungkan) dan ↷ (ulangi) di kanan atas. Untuk mengosongkan semua data, pakai reset.</p>
+          <button type="button" class="btn btn-danger-outline btn-block" id="btn-reset">Reset semua data</button>
+        </div>
+      </div>
+
+      <p class="about">Cay's Money Tracker · versi 1.2<br>Tanpa akun, tanpa server, tanpa pelacakan.</p>
     </section>
   </main>
 
@@ -330,12 +378,13 @@
         </div>
 
         <div class="field">
-          <span class="field-label">Sudah terkumpul (opsional)</span>
+          <span class="field-label">Sudah disisihkan di luar saldo (opsional)</span>
           <label class="amount-field sm" for="wish-saved">
             <span class="amount-prefix cur-before" hidden>Rp</span>
-            <input id="wish-saved" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Sudah terkumpul">
+            <input id="wish-saved" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Sudah disisihkan di luar saldo">
             <span class="amount-prefix cur-after">₽</span>
           </label>
+          <p class="hint" id="wish-transfer-note">Uang yang sudah kamu simpan sebelumnya, tidak mengurangi saldo. Untuk memindahkan uang dari saldo, pakai tombol Transfer di kartu impian.</p>
         </div>
 
         <div class="estimate" id="wish-estimate" aria-live="polite"></div>
@@ -348,31 +397,94 @@
     </form>
   </div>
 
-  <!-- ============ SHEET: SETOR TABUNGAN ============ -->
-  <div class="sheet" id="sheet-deposit" role="dialog" aria-modal="true" aria-labelledby="deposit-title" hidden>
+  <!-- ============ SHEET: TRANSFER KE TABUNGAN ============ -->
+  <div class="sheet" id="sheet-transfer" role="dialog" aria-modal="true" aria-labelledby="transfer-title" hidden>
     <div class="sheet-backdrop" data-close></div>
-    <form class="sheet-panel" id="deposit-form" novalidate autocomplete="off">
+    <form class="sheet-panel" id="transfer-form" novalidate autocomplete="off">
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="sheet-head">
-        <h2 id="deposit-title">Setor</h2>
+        <h2 id="transfer-title">Transfer ke tabungan</h2>
         <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </div>
       <div class="sheet-body">
-        <p class="hint" id="deposit-info"></p>
+        <div class="transfer-flow">
+          <div><span>Dari saldo</span><strong id="transfer-balance">0 ₽</strong></div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          <div><span>Ke impian</span><strong id="transfer-wish">-</strong></div>
+        </div>
         <div>
-          <label class="amount-field" for="deposit-amount">
+          <label class="amount-field" for="transfer-amount">
             <span class="amount-prefix cur-before" hidden>Rp</span>
-            <input id="deposit-amount" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" enterkeyhint="done" autocomplete="off" aria-label="Nominal setoran">
+            <input id="transfer-amount" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" enterkeyhint="done" autocomplete="off" aria-label="Nominal transfer">
             <span class="amount-prefix cur-after">₽</span>
           </label>
-          <p class="field-error" id="deposit-error" role="alert" hidden></p>
+          <p class="field-error" id="transfer-error" role="alert" hidden></p>
         </div>
-        <p class="hint">Setoran menambah jumlah yang sudah terkumpul. Untuk mengoreksi jumlahnya, ketuk impian lalu ubah "Sudah terkumpul".</p>
+        <label class="field">
+          <span class="field-label">Tanggal</span>
+          <input type="date" id="transfer-date" class="input">
+        </label>
+        <p class="hint" id="transfer-info"></p>
+        <p class="hint">Transfer mengurangi saldo dan menambah tabungan impian, tapi tidak dihitung sebagai pengeluaran. Hapus transfernya untuk mengembalikan uang ke saldo.</p>
       </div>
       <div class="sheet-foot">
-        <button type="submit" class="btn btn-primary">Tambahkan</button>
+        <button type="button" class="btn btn-ghost-danger" id="transfer-delete" hidden>Hapus</button>
+        <button type="submit" class="btn btn-primary" id="transfer-submit">Transfer</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ SHEET: ANGGARAN ============ -->
+  <div class="sheet" id="sheet-budget" role="dialog" aria-modal="true" aria-labelledby="budget-title" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <form class="sheet-panel" id="budget-form" novalidate autocomplete="off">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="budget-title">Anggaran bulanan</h2>
+        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <p class="hint">Isi batas belanja per kategori untuk setiap bulan. Kosongkan kalau tidak perlu. Hitungan terpakai otomatis mulai dari nol lagi setiap tanggal 1.</p>
+        <div class="budget-rows" id="budget-rows"></div>
+        <button type="button" class="btn btn-secondary btn-block" id="budget-add-cat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Kategori baru (mis. Internet)
+        </button>
+      </div>
+      <div class="sheet-foot">
+        <button type="submit" class="btn btn-primary">Simpan anggaran</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ SHEET: SALDO AWAL ============ -->
+  <div class="sheet" id="sheet-opening" role="dialog" aria-modal="true" aria-labelledby="opening-title" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <form class="sheet-panel" id="opening-form" novalidate autocomplete="off">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <h2 id="opening-title">Selamat datang 👋</h2>
+        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <p class="hint" id="opening-text">Berapa uang yang kamu punya sekarang (tunai + rekening)? Angka ini jadi saldo awal. Bisa diubah kapan saja di Pengaturan.</p>
+        <div>
+          <label class="amount-field" for="opening-amount">
+            <span class="amount-prefix cur-before" hidden>Rp</span>
+            <input id="opening-amount" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" enterkeyhint="done" autocomplete="off" aria-label="Saldo awal">
+            <span class="amount-prefix cur-after">₽</span>
+          </label>
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-secondary" id="opening-skip">Lewati</button>
+        <button type="submit" class="btn btn-primary">Simpan saldo awal</button>
       </div>
     </form>
   </div>
