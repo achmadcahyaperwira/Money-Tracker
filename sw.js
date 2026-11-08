@@ -1,7 +1,7 @@
 /* Cay's Money Tracker — service worker
    Menyimpan semua file aplikasi di cache supaya bisa dibuka tanpa internet.
    Jika suatu saat file aplikasi diubah, naikkan angka versi di bawah (mis. v2 -> v3). */
-const CACHE = 'cays-money-v3';
+const CACHE = 'cays-money-v4';
 
 const ASSETS = [
   './',

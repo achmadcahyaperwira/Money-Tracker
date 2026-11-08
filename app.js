@@ -581,14 +581,16 @@
     }
     items.sort(sortDesc);
 
-    var inc = 0, exp = 0;
+    var inc = 0, exp = 0, moved = 0;
     items.forEach(function (t) {
       if (t.type === 'income') inc += t.amount;
       else if (t.type === 'expense') exp += t.amount;
+      else moved += t.amount;
     });
     $('#history-summary').innerHTML =
       '<div class="pill income"><span>Pemasukan</span><strong>' + esc(formatMoney(inc)) + '</strong></div>' +
-      '<div class="pill expense"><span>Pengeluaran</span><strong>' + esc(formatMoney(exp)) + '</strong></div>';
+      '<div class="pill expense"><span>Pengeluaran</span><strong>' + esc(formatMoney(exp)) + '</strong></div>' +
+      (moved ? '<div class="pill transfer wide"><span>Ditransfer ke tabungan impian</span><strong>' + esc(formatMoney(moved)) + '</strong></div>' : '');
 
     var list = $('#history-list');
     if (!items.length) {
@@ -942,14 +944,46 @@
     toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2600);
   }
 
-  /* ================= Form transaksi ================= */
+  /* ================= Form transaksi (pengeluaran / pemasukan / transfer) ================= */
   var txEditId = null;
   var txType = 'expense';
   var txCat = null;
+  var txWish = null;
+
+  // Efek transaksi pada saldo: pemasukan menambah, pengeluaran & transfer mengurangi.
+  function balanceEffect(t) { return t.type === 'income' ? t.amount : -t.amount; }
+
+  // Saldo yang bisa dipakai untuk transfer (transaksi yang sedang diedit dianggap belum ada).
+  function availableForTransfer() {
+    var existing = txEditId ? state.tx.find(function (x) { return x.id === txEditId; }) : null;
+    return roundTo(computeBalance() - (existing ? balanceEffect(existing) : 0), cur().decimals);
+  }
+
+  function defaultWish() {
+    var totals = transferTotals();
+    var list = sortedWish(totals);
+    var open = list.filter(function (w) { return wishTotal(w, totals) < w.price; });
+    var last = state.settings.lastWish;
+    if (last && open.some(function (w) { return w.id === last; })) return last;
+    if (open.length) return open[0].id;
+    return list.length ? list[0].id : null;
+  }
 
   function setTxType(type) {
     txType = type;
     $all('input[name="tx-type"]').forEach(function (r) { r.checked = r.value === type; });
+    var isTransfer = type === 'transfer';
+    $('#tx-cat-label').textContent = isTransfer ? 'Ke impian' : 'Kategori';
+    $('#tx-cats').hidden = isTransfer;
+    $('#tx-wishes').hidden = !isTransfer;
+    $('#tx-transfer-info').hidden = !isTransfer;
+    if (isTransfer) {
+      if (!wishById(txWish)) txWish = defaultWish();
+      renderTxWishes();
+    } else {
+      if (!catFits(txCat, type)) txCat = defaultCatFor(type);
+      renderTxChips();
+    }
   }
 
   function renderTxChips() {
@@ -965,33 +999,66 @@
     }).join('');
   }
 
+  function renderTxWishes() {
+    var totals = transferTotals();
+    var list = sortedWish(totals);
+    $('#tx-wishes').innerHTML = list.length
+      ? list.map(function (w) {
+          var k = wishKind(w.kind);
+          return '<button type="button" class="chip" role="radio" aria-checked="' + (w.id === txWish) + '" data-wishchip="' + esc(w.id) + '">' +
+            '<span aria-hidden="true">' + k.emoji + '</span>' + esc(w.name) + '</button>';
+        }).join('')
+      : '<div class="wish-inline-empty"><p class="hint">Belum ada impian sebagai tujuan transfer.</p>' +
+        '<button type="button" class="btn btn-secondary" data-new-wish>+ Buat impian</button></div>';
+    updateTransferInfo();
+  }
+
+  function updateTransferInfo() {
+    if (txType !== 'transfer') return;
+    var w = wishById(txWish);
+    var text = 'Saldo tersedia: ' + formatMoney(availableForTransfer()) + '.';
+    if (w) text += ' ' + w.name + ': terkumpul ' + formatMoney(wishTotal(w)) + ' dari ' + formatMoney(w.price) + '.';
+    $('#tx-transfer-info').textContent = text + ' Transfer tercatat di Riwayat, tapi tidak dihitung sebagai pengeluaran.';
+  }
+
   function showTxError(msg) {
     var e = $('#tx-error');
     e.textContent = msg;
     e.hidden = !msg;
   }
 
-  function openTxSheet(id) {
+  // opts: { type: 'transfer', wishId } dipakai oleh tombol Transfer di kartu impian.
+  function openTxSheet(id, opts) {
+    opts = opts || {};
     var t = id ? state.tx.find(function (x) { return x.id === id; }) : null;
-    if (t && t.type === 'transfer') { openTransferSheet(t.wishId, t.id); return; }
     txEditId = t ? t.id : null;
-    $('#tx-title').textContent = t ? 'Edit Transaksi' : 'Tambah Transaksi';
-    setTxType(t ? t.type : 'expense');
-    txCat = t ? t.categoryId : defaultCatFor(txType);
-    renderTxChips();
+    var type = t ? t.type : (opts.type || 'expense');
+    $('#tx-title').textContent = t ? (t.type === 'transfer' ? 'Edit Transfer' : 'Edit Transaksi') : (type === 'transfer' ? 'Transfer ke Tabungan' : 'Tambah Transaksi');
+    txCat = t && t.type !== 'transfer' ? t.categoryId : defaultCatFor(type === 'income' ? 'income' : 'expense');
+    txWish = t && t.type === 'transfer' ? t.wishId : (opts.wishId || null);
 
     applyCurrencyToFields();
     var amount = $('#tx-amount');
     amount.value = t ? amountForInput(t.amount) : '';
+    if (!t && opts.wishId) {
+      // Saran: tabungan per bulan, tapi tidak melebihi kekurangannya.
+      var w = wishById(opts.wishId);
+      if (w && w.monthly) {
+        var remaining = Math.max(0, w.price - wishTotal(w));
+        var suggest = Math.min(w.monthly, remaining || w.monthly);
+        amount.value = amountForInput(roundTo(suggest, cur().decimals));
+      }
+    }
     $('#tx-date').value = t ? t.date : todayStr();
     $('#tx-note').value = t ? (t.note || '') : '';
     $('#tx-delete').hidden = !t;
+    setTxType(type);
     showTxError('');
     $('#sheet-tx .sheet-body').scrollTop = 0;
 
     openSheet($('#sheet-tx'));
     // Fokus langsung ke nominal supaya keypad angka terbuka (tetap di dalam ketukan pengguna).
-    if (!t) { try { amount.focus({ preventScroll: true }); } catch (e) { amount.focus(); } }
+    if (!t && !amount.value) { try { amount.focus({ preventScroll: true }); } catch (e) { amount.focus(); } }
   }
 
   function saveTx(ev) {
@@ -1002,6 +1069,18 @@
       showTxError('Masukkan nominal lebih dari 0.');
       $('#tx-amount').focus();
       return;
+    }
+    var isTransfer = txType === 'transfer';
+    if (isTransfer) {
+      if (!wishById(txWish)) {
+        showTxError(state.wish.length ? 'Pilih impian tujuan transfer.' : 'Buat impian dulu sebagai tujuan transfer.');
+        return;
+      }
+      var avail = availableForTransfer();
+      if (amount > avail) {
+        showTxError('Saldo tidak cukup. Saldo tersedia: ' + formatMoney(avail) + '. Isi saldo awal di Pengaturan atau catat pemasukan dulu.');
+        return;
+      }
     }
     var date = $('#tx-date').value;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = todayStr();
@@ -1014,23 +1093,31 @@
       id: existing ? existing.id : uid(),
       type: txType,
       amount: amount,
-      categoryId: catId,
+      categoryId: isTransfer ? null : catId,
       date: date,
       note: note,
       createdAt: existing ? existing.createdAt : now,
       updatedAt: now
     };
+    if (isTransfer) t.wishId = txWish;
 
     var wasEdit = !!existing;
     var before = snapshot();
     store.put('transactions', t).then(function () {
       if (wasEdit) state.tx = state.tx.map(function (x) { return x.id === t.id ? t : x; });
       else state.tx = state.tx.concat([t]);
-      pushHistory(wasEdit ? 'Edit transaksi' : 'Tambah transaksi', before);
-      setSetting(t.type === 'income' ? 'lastCatIncome' : 'lastCatExpense', catId);
+      pushHistory(isTransfer ? (wasEdit ? 'Ubah transfer' : 'Transfer ke tabungan') : (wasEdit ? 'Edit transaksi' : 'Tambah transaksi'), before);
+      if (isTransfer) setSetting('lastWish', txWish);
+      else setSetting(t.type === 'income' ? 'lastCatIncome' : 'lastCatExpense', catId);
       closeTopSheet();
       renderAll();
-      toast(wasEdit ? 'Perubahan disimpan' : 'Transaksi disimpan');
+      if (isTransfer) {
+        var w = wishById(t.wishId);
+        if (wishTotal(w) >= w.price) toast('🎉 Dana untuk ' + w.name + ' sudah cukup!');
+        else toast(formatMoney(amount) + ' ditransfer ke ' + w.name);
+      } else {
+        toast(wasEdit ? 'Perubahan disimpan' : 'Transaksi disimpan');
+      }
       requestPersist();
     }).catch(function (err) {
       console.warn(err);
@@ -1041,20 +1128,24 @@
   function deleteTx() {
     var t = state.tx.find(function (x) { return x.id === txEditId; });
     if (!t) return;
+    var isTransfer = t.type === 'transfer';
+    var w = isTransfer ? wishById(t.wishId) : null;
     confirmDialog({
-      title: 'Hapus transaksi ini?',
-      message: (t.type === 'income' ? 'Pemasukan ' : 'Pengeluaran ') + formatMoney(t.amount) + ' · ' +
-        getCat(t.categoryId).name + ' · ' + dateLong(t.date) + '. Masih bisa dibatalkan dengan tombol urungkan (↶).',
+      title: isTransfer ? 'Hapus transfer ini?' : 'Hapus transaksi ini?',
+      message: isTransfer
+        ? formatMoney(t.amount) + ' kembali ke saldo' + (w ? ' dan tabungan "' + w.name + '" berkurang' : '') + '. Masih bisa dibatalkan dengan tombol urungkan (↶).'
+        : (t.type === 'income' ? 'Pemasukan ' : 'Pengeluaran ') + formatMoney(t.amount) + ' · ' +
+          getCat(t.categoryId).name + ' · ' + dateLong(t.date) + '. Masih bisa dibatalkan dengan tombol urungkan (↶).',
       okText: 'Hapus'
     }).then(function (ok) {
       if (!ok) return;
       var before = snapshot();
       return store.remove('transactions', t.id).then(function () {
         state.tx = state.tx.filter(function (x) { return x.id !== t.id; });
-        pushHistory('Hapus transaksi', before);
+        pushHistory(isTransfer ? 'Hapus transfer' : 'Hapus transaksi', before);
         closeTopSheet();
         renderAll();
-        toast('Transaksi dihapus');
+        toast(isTransfer ? 'Transfer dihapus, uang kembali ke saldo' : 'Transaksi dihapus');
       });
     }).catch(function (err) {
       console.warn(err);
@@ -1270,6 +1361,10 @@
       pushHistory(existing ? 'Ubah impian' : 'Tambah impian', before);
       closeTopSheet();
       renderAll();
+      if (sheetStack[sheetStack.length - 1] === $('#sheet-tx') && txType === 'transfer') {
+        if (!existing) txWish = w.id;
+        renderTxWishes();
+      }
       toast(existing ? 'Impian diperbarui' : 'Impian ditambahkan');
       requestPersist();
     }).catch(function (err) {
@@ -1303,106 +1398,6 @@
         closeTopSheet();
         renderAll();
         toast(back ? 'Impian dihapus, ' + formatMoney(back) + ' kembali ke saldo' : 'Impian dihapus');
-      });
-    }).catch(function (err) {
-      console.warn(err);
-      toast('Gagal menghapus. Coba lagi.');
-    });
-  }
-
-  /* ================= Transfer saldo → tabungan ================= */
-  var transferWishId = null;
-  var transferEditId = null;
-
-  function openTransferSheet(wishId, txId) {
-    var t = txId ? state.tx.find(function (x) { return x.id === txId; }) : null;
-    var w = wishById(t ? t.wishId : wishId);
-    if (!t && !w) return;
-    transferEditId = t ? t.id : null;
-    transferWishId = t ? t.wishId : w.id;
-    var totals = transferTotals();
-    var available = computeBalance() + (t ? t.amount : 0);
-    $('#transfer-title').textContent = t ? 'Edit transfer' : 'Transfer ke tabungan';
-    $('#transfer-balance').textContent = formatMoney(available);
-    $('#transfer-wish').textContent = w ? w.name : 'Impian dihapus';
-    $('#transfer-info').textContent = w ? 'Terkumpul ' + formatMoney(wishTotal(w, totals)) + ' dari ' + formatMoney(w.price) + '.' : '';
-    applyCurrencyToFields();
-    var amount = $('#transfer-amount');
-    if (t) {
-      amount.value = amountForInput(t.amount);
-    } else {
-      // Saran: tabungan per bulan, tapi tidak melebihi kekurangannya.
-      var remaining = Math.max(0, w.price - wishTotal(w, totals));
-      var suggest = w.monthly ? Math.min(w.monthly, remaining || w.monthly) : 0;
-      amount.value = suggest > 0 ? amountForInput(roundTo(suggest, cur().decimals)) : '';
-    }
-    $('#transfer-date').value = t ? t.date : todayStr();
-    $('#transfer-delete').hidden = !t;
-    $('#transfer-submit').textContent = t ? 'Simpan' : 'Transfer';
-    showFieldError('#transfer-error', '');
-    openSheet($('#sheet-transfer'));
-    if (!amount.value) { try { amount.focus({ preventScroll: true }); } catch (e) { amount.focus(); } }
-  }
-
-  function saveTransfer(ev) {
-    ev.preventDefault();
-    var c = cur();
-    var existing = transferEditId ? state.tx.find(function (x) { return x.id === transferEditId; }) : null;
-    var amount = roundTo(parseAmount($('#transfer-amount').value), c.decimals);
-    if (!(amount > 0)) { showFieldError('#transfer-error', 'Masukkan nominal lebih dari 0.'); $('#transfer-amount').focus(); return; }
-    var available = roundTo(computeBalance() + (existing ? existing.amount : 0), c.decimals);
-    if (amount > available) {
-      showFieldError('#transfer-error', 'Saldo tidak cukup. Saldo yang bisa dipakai: ' + formatMoney(available) +
-        '. Isi saldo awal di Pengaturan atau catat pemasukan dulu.');
-      return;
-    }
-    var date = $('#transfer-date').value;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = todayStr();
-    var now = Date.now();
-    var t = {
-      id: existing ? existing.id : uid(),
-      type: 'transfer',
-      amount: amount,
-      categoryId: null,
-      wishId: transferWishId,
-      date: date,
-      note: existing ? (existing.note || '') : '',
-      createdAt: existing ? existing.createdAt : now,
-      updatedAt: now
-    };
-    var before = snapshot();
-    store.put('transactions', t).then(function () {
-      state.tx = existing ? state.tx.map(function (x) { return x.id === t.id ? t : x; }) : state.tx.concat([t]);
-      pushHistory(existing ? 'Ubah transfer' : 'Transfer ke tabungan', before);
-      closeTopSheet();
-      renderAll();
-      var w = wishById(t.wishId);
-      if (w && wishTotal(w) >= w.price) toast('🎉 Dana untuk ' + w.name + ' sudah cukup!');
-      else toast(existing ? 'Transfer diperbarui' : formatMoney(amount) + ' ditransfer ke ' + (w ? w.name : 'tabungan'));
-      requestPersist();
-    }).catch(function (err) {
-      console.warn(err);
-      showFieldError('#transfer-error', 'Gagal menyimpan. Coba lagi.');
-    });
-  }
-
-  function deleteTransfer() {
-    var t = state.tx.find(function (x) { return x.id === transferEditId; });
-    if (!t) return;
-    var w = wishById(t.wishId);
-    confirmDialog({
-      title: 'Hapus transfer ini?',
-      message: formatMoney(t.amount) + ' kembali ke saldo' + (w ? ' dan tabungan "' + w.name + '" berkurang' : '') + '.',
-      okText: 'Hapus'
-    }).then(function (ok) {
-      if (!ok) return;
-      var before = snapshot();
-      return store.remove('transactions', t.id).then(function () {
-        state.tx = state.tx.filter(function (x) { return x.id !== t.id; });
-        pushHistory('Hapus transfer', before);
-        closeTopSheet();
-        renderAll();
-        toast('Transfer dihapus, uang kembali ke saldo');
       });
     }).catch(function (err) {
       console.warn(err);
@@ -1777,7 +1772,9 @@
       if (catBtn) { openCatSheet(catBtn.getAttribute('data-cat')); return; }
 
       var trBtn = e.target.closest('[data-transfer]');
-      if (trBtn) { openTransferSheet(trBtn.getAttribute('data-transfer'), null); return; }
+      if (trBtn) { openTxSheet(null, { type: 'transfer', wishId: trBtn.getAttribute('data-transfer') }); return; }
+
+      if (e.target.closest('[data-new-wish]')) { openWishSheet(null); return; }
 
       if (e.target.closest('[data-budget-open]')) { openBudgetSheet(); return; }
 
@@ -1824,10 +1821,19 @@
     $all('input[name="tx-type"]').forEach(function (r) {
       r.addEventListener('change', function () {
         if (!r.checked) return;
-        txType = r.value;
-        if (!catFits(txCat, txType)) txCat = defaultCatFor(txType);
-        renderTxChips();
+        setTxType(r.value);
+        showTxError('');
       });
+    });
+    $('#tx-wishes').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-wishchip]');
+      if (!b) return;
+      txWish = b.getAttribute('data-wishchip');
+      $all('#tx-wishes .chip').forEach(function (x) { x.setAttribute('aria-checked', String(x === b)); });
+      updateTransferInfo();
+      showTxError('');
+      var a = $('#tx-amount');
+      if (document.activeElement === a) a.blur();
     });
     // Semua kolom nominal: rapikan pemisah ribuan saat diketik.
     document.addEventListener('input', function (e) {
@@ -1836,7 +1842,6 @@
       var clean = sanitizeAmount(input.value, cur());
       if (clean !== input.value) input.value = clean;
       if (input.id === 'tx-amount' && clean) showTxError('');
-      if (input.id === 'transfer-amount' && clean) showFieldError('#transfer-error', '');
       if (input.closest('#wish-form')) updateWishEstimate();
     });
 
@@ -1851,8 +1856,6 @@
     $('#wish-name').addEventListener('input', function () { showFieldError('#wish-error', ''); });
     $('#wish-form').addEventListener('submit', saveWish);
     $('#wish-delete').addEventListener('click', deleteWish);
-    $('#transfer-form').addEventListener('submit', saveTransfer);
-    $('#transfer-delete').addEventListener('click', deleteTransfer);
 
     // Anggaran, saldo awal, reset
     $('#budget-edit').addEventListener('click', openBudgetSheet);

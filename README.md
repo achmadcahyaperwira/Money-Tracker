@@ -14,7 +14,7 @@ Semua data tersimpan di HP sendiri: tanpa akun, tanpa server, tanpa pelacakan.
 - Riwayat per tanggal, filter per bulan, pencarian, edit dan hapus
 - Beranda: saldo, total bulan ini, grafik pengeluaran per kategori
 - Kategori bisa ditambah, diubah, dihapus
-- **Tabungan Impian:** isi harga dan tabungan per bulan, aplikasi menghitung kira-kira berapa bulan lagi. Tombol **Transfer** memindahkan uang dari saldo ke tabungan impian
+- **Tabungan Impian:** isi harga dan tabungan per bulan, aplikasi menghitung kira-kira berapa bulan lagi. Transfer dari saldo ke impian lewat tombol **+ → Transfer** atau tombol **Transfer** di kartu impian; setiap transfer tercatat di Riwayat
 - **Urungkan / ulangi** (↶ ↷ di kanan atas) untuk semua perubahan data, dan **Reset semua data** di Pengaturan
 - Mata uang default Rubel (format `1 250 000 ₽`), bisa diganti di Pengaturan
 - Mode terang/gelap, ekspor & impor backup (JSON), ekspor CSV

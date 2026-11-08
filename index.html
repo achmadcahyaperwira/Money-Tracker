@@ -214,7 +214,7 @@
         </div>
       </div>
 
-      <p class="about">Cay's Money Tracker · versi 1.2<br>Tanpa akun, tanpa server, tanpa pelacakan.</p>
+      <p class="about">Cay's Money Tracker · versi 1.3<br>Tanpa akun, tanpa server, tanpa pelacakan.</p>
     </section>
   </main>
 
@@ -259,6 +259,7 @@
           <legend class="sr-only">Jenis transaksi</legend>
           <label class="expense"><input type="radio" name="tx-type" value="expense" checked><span>Pengeluaran</span></label>
           <label class="income"><input type="radio" name="tx-type" value="income"><span>Pemasukan</span></label>
+          <label class="transfer"><input type="radio" name="tx-type" value="transfer"><span>Transfer</span></label>
         </fieldset>
 
         <div>
@@ -273,6 +274,8 @@
         <div class="field">
           <span class="field-label" id="tx-cat-label">Kategori</span>
           <div class="chips" id="tx-cats" role="radiogroup" aria-labelledby="tx-cat-label"></div>
+          <div class="chips" id="tx-wishes" role="radiogroup" aria-labelledby="tx-cat-label" hidden></div>
+          <p class="hint" id="tx-transfer-info" hidden></p>
         </div>
 
         <label class="field">
@@ -384,7 +387,7 @@
             <input id="wish-saved" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="Sudah disisihkan di luar saldo">
             <span class="amount-prefix cur-after">₽</span>
           </label>
-          <p class="hint" id="wish-transfer-note">Uang yang sudah kamu simpan sebelumnya, tidak mengurangi saldo. Untuk memindahkan uang dari saldo, pakai tombol Transfer di kartu impian.</p>
+          <p class="hint" id="wish-transfer-note">Uang yang sudah kamu simpan sebelumnya, tidak mengurangi saldo. Untuk memindahkan uang dari saldo, pakai tombol Transfer di kartu impian atau tombol + lalu pilih Transfer.</p>
         </div>
 
         <div class="estimate" id="wish-estimate" aria-live="polite"></div>
@@ -393,45 +396,6 @@
       <div class="sheet-foot">
         <button type="button" class="btn btn-ghost-danger" id="wish-delete" hidden>Hapus</button>
         <button type="submit" class="btn btn-primary">Simpan</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- ============ SHEET: TRANSFER KE TABUNGAN ============ -->
-  <div class="sheet" id="sheet-transfer" role="dialog" aria-modal="true" aria-labelledby="transfer-title" hidden>
-    <div class="sheet-backdrop" data-close></div>
-    <form class="sheet-panel" id="transfer-form" novalidate autocomplete="off">
-      <div class="sheet-handle" aria-hidden="true"></div>
-      <div class="sheet-head">
-        <h2 id="transfer-title">Transfer ke tabungan</h2>
-        <button type="button" class="icon-btn ghost" data-close aria-label="Tutup">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <div class="sheet-body">
-        <div class="transfer-flow">
-          <div><span>Dari saldo</span><strong id="transfer-balance">0 ₽</strong></div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          <div><span>Ke impian</span><strong id="transfer-wish">-</strong></div>
-        </div>
-        <div>
-          <label class="amount-field" for="transfer-amount">
-            <span class="amount-prefix cur-before" hidden>Rp</span>
-            <input id="transfer-amount" class="amount-input money-input" type="text" inputmode="decimal" placeholder="0" enterkeyhint="done" autocomplete="off" aria-label="Nominal transfer">
-            <span class="amount-prefix cur-after">₽</span>
-          </label>
-          <p class="field-error" id="transfer-error" role="alert" hidden></p>
-        </div>
-        <label class="field">
-          <span class="field-label">Tanggal</span>
-          <input type="date" id="transfer-date" class="input">
-        </label>
-        <p class="hint" id="transfer-info"></p>
-        <p class="hint">Transfer mengurangi saldo dan menambah tabungan impian, tapi tidak dihitung sebagai pengeluaran. Hapus transfernya untuk mengembalikan uang ke saldo.</p>
-      </div>
-      <div class="sheet-foot">
-        <button type="button" class="btn btn-ghost-danger" id="transfer-delete" hidden>Hapus</button>
-        <button type="submit" class="btn btn-primary" id="transfer-submit">Transfer</button>
       </div>
     </form>
   </div>
